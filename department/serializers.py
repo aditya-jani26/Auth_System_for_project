@@ -2,12 +2,11 @@
 from rest_framework import serializers
 from rest_framework.fields import empty
 from .models import *
-from xml.dom import ValidationErr
 from rest_framework import serializers
 from department.Utils import Utils
 from .models import CustomUser,Project
-from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.hashers import make_password
 
@@ -65,10 +64,12 @@ class ChangePasswordSerializer(serializers.HyperlinkedModelSerializer):
         user.set_password(password)
         user.save()
         return attrs
+    
 class ResetPasswordEmailRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields  = ['email']
+
     def validate(self, data):
         email = data.get('email')
         user_queryset = CustomUser.objects.filter(email=email)
@@ -86,6 +87,7 @@ class ResetPasswordEmailRequestSerializer(serializers.ModelSerializer):
             return data
         else:
             raise serializers.ValidationError({'INVALID EMAIL': 'Email does not exist'})
+        
 class SendResetPasswordEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=255)
 
@@ -104,6 +106,7 @@ class SendResetPasswordEmailSerializer(serializers.Serializer):
             print("email_data",email_data)
             Utils.send_email(email_data)
             return email_data
+        
         else:
             raise serializers.ValidationError({'INVALID_EMAIL': 'Email does not exist'})
 
