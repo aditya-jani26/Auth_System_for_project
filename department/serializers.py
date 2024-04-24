@@ -10,9 +10,6 @@ from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.hashers import make_password
 
-# from rest_framework.authtoken.models import Token
-from django.contrib.auth.hashers import make_password
-
 class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -26,87 +23,71 @@ class RegistrationSerializer(serializers.ModelSerializer):
             pass
         super().__init__(instance, data, **kwargs)
 
-class ProjectListSerializer(serializers.ModelSerializer):
+class ChangePasswordSerializer(serializers.Serializer):
+    id = serializers.ReadOnlyField()
+    password = serializers.CharField(write_only=True, required=True)
+    confirm_password = serializers.CharField(write_only=True, required=True)
 
-    class Meta:
-        model = Project
-        fields = '__all__'
-
-class ProjectAllocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Project
-        fields = "__all__"
-        
-    # Create    
-class ProjectCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Project
-        fields = '__all__'
-
-    # CRUD methods
-class ProjectCRUDSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Project
-        fields = '__all__'  
-
-class ChangePasswordSerializer(serializers.HyperlinkedModelSerializer):
-    id=serializers.ReadOnlyField
-    class Meta:
-        model=CustomUser
-        fields=["password",'confirm_password']
-
-    def validate(self,attrs):
+    def validate(self, attrs):
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
-        user = self.context.get('user')
-        if password!= confirm_password:
+
+        if password != confirm_password:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
-        user.set_password(password)
-        user.save()
+
         return attrs
+
+    def save(self, **kwargs):
+        user = self.context['request'].user  # Get the user from the request
+        password = self.validated_data['password']
+
+        # Set password directly to the password field
+        user.password = password
+        user.save()
+        return user
     
-class ResetPasswordEmailRequestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields  = ['email']
+# class ResetPasswordEmailRequestSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = CustomUser
+#         fields  = ['email']
 
-    def validate(self, data):
-        email = data.get('email')
-        user_queryset = CustomUser.objects.filter(email=email)
-        if user_queryset.exists():
-            user = user_queryset.first()  # Get the first user in queryset
-            user_id = urlsafe_base64_encode(force_bytes(user.id))
-            print("Encoded id", user_id)
-            token = PasswordResetTokenGenerator().make_token(user)
-            print("password reset token", token)
-            link = 'http://localhost:3000/api/reset/'+user_id+'/'+token
-            print("password reset link", link)
-            body = 'Click following link to reset password ' + link
-            email_data =  {'subject':'Reset Your Password', 'body':body, 'to_email':user.email}
-            Utils.send_email(email_data)
-            return data
-        else:
-            raise serializers.ValidationError({'INVALID EMAIL': 'Email does not exist'})
+#     def validate(self, data):
+#         email = data.get('email')
+#         user_queryset = CustomUser.objects.filter(email=email)
+#         if user_queryset.exists():
+#             user = user_queryset.first()  # Get the first user in queryset
+#             user_id = urlsafe_base64_encode(force_bytes(user.id))
+#             print("Encoded id", user_id)
+#             token = PasswordResetTokenGenerator().make_token(user)
+#             print("password reset token", token)
+#             link = 'http://localhost:3000/api/reset/'+user_id+'/'+token
+#             print("password reset link", link)
+#             body = 'Click following link to reset password ' + link
+#             email_data =  {'subject':'Reset Your Password', 'body':body, 'to_email':user.email}
+#             Utils.send_email(email_data)
+#             return data
+#         else:
+#             raise serializers.ValidationError({'INVALID EMAIL': 'Email does not exist'})
         
-class SendResetPasswordEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField(max_length=255)
+# class SendResetPasswordEmailSerializer(serializers.Serializer):
+#     email = serializers.EmailField(max_length=255)
 
-    def validate(self, data):
-        email = data.get('email')
-        if CustomUser.objects.filter(email=email).exists():
-            user = CustomUser.objects.get(email=email)
-            user_id = urlsafe_base64_encode(force_bytes(user.id))
-            print("Encoded id", user_id)
-            token = PasswordResetTokenGenerator().make_token(user)
-            print("password reset token", token)
-            link = 'http://localhost:3000/api/reset/'+user_id+'/'+token
-            print("password reset link", link)
-            body = 'Click following link to reset password ' + link
-            email_data =  {'subject':'Reset Your Password', 'body':body, 'to_email':user.email}
-            print("email_data",email_data)
-            Utils.send_email(email_data)
-            return email_data
+#     def validate(self, data):
+#         email = data.get('email')
+#         if CustomUser.objects.filter(email=email).exists():
+#             user = CustomUser.objects.get(email=email)
+#             user_id = urlsafe_base64_encode(force_bytes(user.id))
+#             print("Encoded id", user_id)
+#             token = PasswordResetTokenGenerator().make_token(user)
+#             print("password reset token", token)
+#             link = 'http://localhost:3000/api/reset/'+user_id+'/'+token
+#             print("password reset link", link)
+#             body = 'Click following link to reset password ' + link
+#             email_data =  {'subject':'Reset Your Password', 'body':body, 'to_email':user.email}
+#             print("email_data",email_data)
+#             Utils.send_email(email_data)
+#             return email_data
         
-        else:
-            raise serializers.ValidationError({'INVALID_EMAIL': 'Email does not exist'})
+#         else:
+#             raise serializers.ValidationError({'INVALID_EMAIL': 'Email does not exist'})
 

@@ -4,7 +4,6 @@ from django.core.validators import EmailValidator,MinLengthValidator,MaxLengthVa
 from .models import *
 import binascii
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 import os
 class CustomUser(models.Model):
     username = models.CharField(max_length=100)
@@ -43,23 +42,15 @@ class Project(models.Model):
     ]
     projectStatus = models.CharField(max_length=100, choices=todoChoices)
 
-
-
-# example for tocken
-
 class CustomToken(models.Model):
-    key = models.CharField(max_length=40, primary_key=True)
+    key = models.CharField(max_length=40)
     user = models.OneToOneField(CustomUser, related_name='custom_token', on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=timezone.now)
     
     def generate_key(self):
         self.key = binascii.hexlify(os.urandom(20)).decode()
-        print("key ", self.key)
 
-    def save(self, *args, **kwargs):
-        if self.key:
-            self.key = self.generate_key()
-            print("key/// ", self.key)
+    def save(self, args, *kwargs):
         return super().save(*args, **kwargs)
 
     def __str__(self):
