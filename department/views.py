@@ -1,3 +1,4 @@
+from warnings import filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -6,11 +7,17 @@ from .serializers import *
 from .models import *
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.hashers import check_password
-import re
-from rest_framework.permissions import IsAuthenticated
-# =============================-RegisterView-====================================
+from rest_framework.generics import ListAPIView
+import django_filters.rest_framework
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAdminUser
+
+# ===============================================-RegisterView-==========================================
+
 class RegisterView(APIView):
+
     parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request):
         reg_errors = self.validate_registration(request.data)
         
@@ -26,42 +33,47 @@ class RegisterView(APIView):
                 reg_errors(f"Error occurred while saving user: {e}")
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# with this i can send all error messages so that user can get notified after runing the code
+# with this i can send all error messages so that user can get txt after runing the code
     def validate_registration(self, data):
             errors = {}           
             if CustomUser.objects.filter(username=data.get('username')).exists():
                 errors['username'] = 'This username is already in use.'
-            
             return errors
 # this is working and password stored in hash
-# ============================-LoginView-=====================================
+    
+# ==============================================-LoginView-====================================================
+# when the user is logged in Token should be creaded
+    
 class loginView(APIView):
+
     parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request):
         try:
             user = CustomUser.objects.get(username=request.data['username'])
         except CustomUser.DoesNotExist:
             return Response({'msg': 'User not found', 'status': 'error'}, status=404)
 
-        if not check_password(request.data['password'], user.password):
-            return Response({'msg': 'Invalid credentials', 'status': 'warning'}, status=400)
-        try: 
-            token, created = CustomToken.objects.get_or_create(user=user)
-            if created:
-                # If a new token was created, generate the key
-                token.generate_key()
-                token.save()
-            # Now you can access the token key from the 'token' instance
-            serializer = {"username": user.username, "token": token.key}
-            return Response(serializer, status=200)
-        except Exception as e:
-            print("Error", e)
-            return Response("error!!!", status=501)
+        if check_password(request.data['password'], user.password):
+                token, created = CustomToken.objects.get_or_create(user=user)
+                if created:
+                    # If a new token was created, generate the key
+                    token.generate_key()
+                    token.save()
+                # Now you can access the token key from the 'token' instance
+                serializer = {"username": user.username, "token": token.key}
+                return Response(serializer, status=status.HTTP_200_OK)
+        else:
+            return Response({'msg':'ckeck your password before you enter', status:'wrong'}, status=404)
+            
 # this is working just need to check how can i register the tocken as it might not work so moving on to creat new function 
 
-# =============================-Changepasswords-=====================================
+# ===========================================-Changepasswords-=========================================
+        
+# Here the password will change on API level
         
 class ChangePasswords(APIView):
+
     def post(self, request):
         check, obj = token_auth(request)
         if not check:
@@ -71,30 +83,46 @@ class ChangePasswords(APIView):
             
             if serializer.is_valid():
                 user = obj.user  # Access the associated CustomUser
-                new_password = serializer.validated_data['confirm_password']
+                new_password = serializer.validated_data['password']
                 user.password = new_password
                 user.save()
                 return Response({'msg': 'Password changed successfully'}, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# ==============================-ResetPassword-===================================
-# class ResetPassword(APIView):
-#     def post(self, request, format= None):
-#         serializers = ResetPasswordEmailRequestSerializer(data= request.data)
-#         print(serializers, 'Reset--->')
-#         if serializers.is_valid():
-#             return Response({'msg':'password Reset link send. Plase check your email inbox'},status= status.HTTP_200_OK)
-#         return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+# working till here full and final solution.
+        
+# ===============================================-ResetPassword-==============================================
+# here we reset the password will work on Email base 
+        
+class ResetPassword(APIView):
     
-# class SendResetPasswordEmaiView(APIView):
-#     def post(self, request):
-#         serializer = SendResetPasswordEmailSerializer(data=request.data)
-#         print(serializer,'--->sendreset')
-#         serializer.is_valid(raise_exception=True)
-#         return Response({"Successful":"password reset link is sent..!"}, status=status.HTTP_200_OK)
+    def post(self, request, format= None):
+        check, obj = token_auth(request)
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            serializers = ResetPasswordEmailRequestSerializer(data= request.data)
+            print(serializers, 'Reset--->')
+            if serializers.is_valid():
+                return Response({'msg':'password Reset link send. Plase check your email inbox'},status= status.HTTP_200_OK)
 
-# ==============================-=-=-=-=-=-=-=-=========================================
+class SendResetPasswordEmaiView(APIView):
+
+    def post(self, request):
+        check, obj = token_auth(request)
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            serializer = SendResetPasswordEmailSerializer(data=request.data)
+            print(serializer,'--->sendreset')
+            serializer.is_valid(raise_exception=True)
+        return Response({"Successful":"password reset link is sent..!"}, status=status.HTTP_200_OK)
+
+# =============-token_auth-=================-=-=-=-=-=-=-=-================================-token_auth-=========
+    
 def token_auth(request):
+
     token = request.headers.get('token',None)
+
     if token is None:
         return False,"please provide a token"
     try:
@@ -102,5 +130,75 @@ def token_auth(request):
         return True,user
     except CustomToken.DoesNotExist:
         return False,"token does not valid"
-    #   =   =   = = = = = ==    == ====     ==  
-    # here the problem is that this is trying to acces the reques.user 
+
+#==================================================-ProjectList-====================================================
+
+class ProjectList(ListAPIView):
+    queryset = Project.objects.all()
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+
+
+    def get_queryset(self,request):
+        check, obj = token_auth(request)
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        elif check:
+            user = self.request.user
+        if user.is_admin :
+            return Project.objects.all() 
+        else:
+            raise PermissionDenied("You do not have permission to view projects.")
+
+        #from this list Api the use can only be able to View list of projects
+# ===-project-===========================================================-projectCreateView-===============================-project-=========
+
+class projectCreateView(APIView):
+
+    def post(self, request):
+        check, obj = token_auth(request)
+
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            serializer = ProjectCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)   
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+# ===-project-=========================================================-ProjectCRUDView-========================================-project-============
+    
+# this is use to do delte and update in any project here i have used 2 def function through which project can be deleted and updated
+
+class ProjectCRUDView(APIView):
+
+    def patch(self, request, id):
+        check, obj = token_auth(request)
+
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                project = Project.objects.get(pk=id)
+                serializer = ProjectCRUDSerializer(project, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response({"Success": "Changes updated successfully.", "updated_data":serializer.data}, status=status.HTTP_200_OK)
+            except Project.DoesNotExist:
+             return Response({"error": "Project does not exists."},status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, id):
+        check, obj = token_auth(request)
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                project = Project.objects.get(pk=id)    
+                project.delete()
+                return Response({"success": "Project deleted successfully."},status=status.HTTP_204_NO_CONTENT)
+            except Project.DoesNotExist:
+                return Response({"error": "Project does not exists."},status=status.HTTP_404_NOT_FOUND)
+
+# =============================================================================================================================
+
+
+

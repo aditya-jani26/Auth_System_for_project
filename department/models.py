@@ -1,10 +1,11 @@
 from django.db import models
-from django.utils.timezone import now
 from django.core.validators import EmailValidator,MinLengthValidator,MaxLengthValidator
 from .models import *
 import binascii
-from django.utils import timezone
+from datetime import datetime   
+
 import os
+
 class CustomUser(models.Model):
     username = models.CharField(max_length=100)
     email = models.EmailField(validators=[EmailValidator])
@@ -13,11 +14,6 @@ class CustomUser(models.Model):
                                             MinLengthValidator(limit_value=8, 
                                                                message="Password must be at least 8 characters")])
     is_active = models.BooleanField(default=True)
-    confirm_password = models.CharField(max_length=250, 
-                                validators=[MaxLengthValidator(limit_value=250), 
-                                            MinLengthValidator(limit_value=8, 
-                                            message="Password must be at least 8 characters")
-                                            ])
     user_typer=[
         ('Admin', 'Admin'), 
         ('Project_Manager', 'Project_Manager'),
@@ -27,30 +23,34 @@ class CustomUser(models.Model):
     is_admin = models.BooleanField(default=False) 
 
 class Project(models.Model):
-    projectCreator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, related_name='created_by')
-
-    assignToProject_Manager = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, related_name='assign_to_pm')
+# is it  like only the admin can create a project
+    # and at time he can assign it to the PM with "it'es PK".
+    projectCreator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='created_by')
+    # assignToProject_Manager = models.ForeignKey(CustomUser, on_delete=models.CASCADE,  related_name='assign_to_pm')
     # have done changes here
     project_id = models.AutoField(primary_key=True)
     projectName = models.CharField(max_length=50)
     projectDescription = models.CharField(max_length=500)
-    projectStartDate = models.DateField(default=now)
+    projectStartDate = models.DateField(null = False)
+
     projectEndDate = models.DateField(null=True)
     todoChoices = [
-        ('In progress', 'In progress'),
-        ('Completed', 'Completed'),
-    ]
-    projectStatus = models.CharField(max_length=100, choices=todoChoices)
+                ('In progress', 'In progress'),
+                ('Completed', 'Completed'),
+                
+            ]
+    projectStatus = models.CharField(max_length=100,null = True, choices=todoChoices)
 
 class CustomToken(models.Model):
+
     key = models.CharField(max_length=40)
     user = models.OneToOneField(CustomUser, related_name='custom_token', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=datetime.now())
     
     def generate_key(self):
         self.key = binascii.hexlify(os.urandom(20)).decode()
 
-    def save(self, args, *kwargs):
+    def save(self, *args, **kwargs):
         return super().save(*args, **kwargs)
 
     def __str__(self):
