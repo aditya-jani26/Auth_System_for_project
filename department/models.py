@@ -2,8 +2,7 @@ from django.db import models
 from django.core.validators import EmailValidator,MinLengthValidator,MaxLengthValidator
 from .models import *
 import binascii
-from datetime import datetime   
-
+from datetime import datetime
 import os
 
 class CustomUser(models.Model):
@@ -55,3 +54,6 @@ class CustomToken(models.Model):
 
     def __str__(self):
         return self.key
+    
+# class leave(models.Model):
+#     leaveType = models.IntegerChoices(choices= Leave)

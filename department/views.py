@@ -132,22 +132,21 @@ def token_auth(request):
         return False,"token does not valid"
 
 #==================================================-ProjectList-====================================================
-
 class ProjectList(ListAPIView):
     queryset = Project.objects.all()
-    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    serializer_class = ProjectListSerializer
 
-
-    def get_queryset(self,request):
-        check, obj = token_auth(request)
+    def get_queryset(self):
+        check, obj = token_auth(self.request)
+        print(obj)
         if not check:
             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
         elif check:
             user = self.request.user
-        if user.is_admin :
-            return Project.objects.all() 
+            if user:
+                return Project.objects.all()
         else:
-            raise PermissionDenied("You do not have permission to view projects.")
+            return Response({'msg': obj})
 
         #from this list Api the use can only be able to View list of projects
 # ===-project-===========================================================-projectCreateView-===============================-project-=========
@@ -199,6 +198,22 @@ class ProjectCRUDView(APIView):
                 return Response({"error": "Project does not exists."},status=status.HTTP_404_NOT_FOUND)
 
 # =============================================================================================================================
+# add leave management system:
 
+# class LeaveList(ListAPIView):
+#     queryset = Leave.objects.all()
+#     serializer_class = LeaveListSerializer
+
+#     def get_queryset(self):
+#         check, obj = token_auth(self.request)
+#         print(obj)
+#         if not check:
+#             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+#         elif check:
+#             user = self.request.user
+#             if user:
+#                 return Leave.objects.all()
+#         else:
+#             return Response({'msg': obj})
 
 

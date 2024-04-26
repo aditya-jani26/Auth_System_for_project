@@ -38,6 +38,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.save()
         return user
     def __init__(self, instance=None, data=..., **kwargs):
+        # this init is used as i wasnt to encript the password field even i change the password field through API.
         try:
             data = data.copy()
             data['password'] = make_password(data['password'])
@@ -51,17 +52,24 @@ class ResetPasswordEmailRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields  = ['email']
+    # through this it is said that when we run this API the request Fields will be only EMAIL fields
 
     def validate(self, data):
         email = data.get('email')
+        # AS soon as we get here iit will check if the email data which we got from the user itself is valid of not.
         user_queryset = CustomUser.objects.filter(email=email)
+        # this will get the email and chek is the email which is given is within the current database with the fillter method.
         if user_queryset.exists():
+            # if the variable is at . exists then it will move into this variable
             user = user_queryset.first()  # Get the first user in queryset
             user_id = urlsafe_base64_encode(force_bytes(user.id))
+            # this is used to encript the user id
             print("Encoded id", user_id)
             token = PasswordResetTokenGenerator().make_token(user)
+            # the token will be genrated when the for the first user.
             print("password reset token", token)
             link = 'http://localhost:3000/api/reset/'+user_id+'/'+token
+            # here is the link that will be in the Email Address
             print("password reset link", link)
             body = 'Click following link to reset password ' + link
             email_data =  {'subject':'Reset Your Password', 'body':body, 'to_email':user.email}
@@ -107,6 +115,12 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         }
 # almost-working
 class ProjectCRUDSerializer(serializers.ModelSerializer):
+
     class Meta:
-        model: Project
+        model = Project
         fields = '__all__'
+# now i want to add leave serialization:
+# class LeaveListSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         models = leave
+#         fields = '__all__'

@@ -7,6 +7,7 @@ class CanCreateProjectPermission(permissions.BasePermission):
 
 
 # this will show how has the permission to allocate the task to emp
+
 class Canallocateproject(permissions.BasePermission):
     def has_permission(self, request, view):
         user_type = getattr(request.user, 'user_typer', None)
