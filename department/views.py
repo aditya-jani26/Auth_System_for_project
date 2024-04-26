@@ -8,9 +8,10 @@ from .models import *
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.hashers import check_password
 from rest_framework.generics import ListAPIView
-import django_filters.rest_framework
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAdminUser
+# import django_filters.rest_framework
+# from rest_framework.exceptions import PermissionDenied
+# from rest_framework.permissions import IsAdminUser
+from django.core.mail import send_mail
 
 # ===============================================-RegisterView-==========================================
 
@@ -69,7 +70,6 @@ class loginView(APIView):
 # this is working just need to check how can i register the tocken as it might not work so moving on to creat new function 
 
 # ===========================================-Changepasswords-=========================================
-        
 # Here the password will change on API level
         
 class ChangePasswords(APIView):
@@ -197,7 +197,35 @@ class ProjectCRUDView(APIView):
             except Project.DoesNotExist:
                 return Response({"error": "Project does not exists."},status=status.HTTP_404_NOT_FOUND)
 
+# =================================================================================================================
+class Projectallocations(APIView):
+
+    def post(self, request):
+        check,obj = token_auth(request)
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            serializer = ProjectallocationSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response({"Success": "Project allocation successful.", "allocation": serializer.data},
+                        status=status.HTTP_201_CREATED)
+
 # =============================================================================================================================
+
+class EmployeeAllocationListView(APIView):
+
+    def get(self, request):
+        if check:
+            check,obj = token_auth(request)
+            employees = CustomUser.objects.filter(userType="Employee")
+            serializer = EmployeeListSerializer(employees, many=True)
+            print(serializer.data)
+            return Response(serializer.data)
+        else:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+    
+
 # add leave management system:
 
 # class LeaveList(ListAPIView):
