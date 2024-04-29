@@ -10,7 +10,9 @@ urlpatterns = [
     path('project_List',ProjectList.as_view(), name="ProjectListView"),
     path('project_create',projectCreateView.as_view(), name="ProjectCreateView"),
     path('projectCRUD/<int:id>',ProjectCRUDView.as_view(), name="ProjectCRUDView"),
-    # path('allocations',projectAllocationView.as_views(),name='ProjectAllocationView'),
-    # path('employeesallocations',EmaployeesallocationView.as_views(),name='employeesallocations'),
-    # path("LeaveList",LeaveList.as_view(), name="LeaveList"),
+    path('allocations',Projectallocations.as_view(),name='ProjectAllocationView'),
+    path('employeesallocations',employeesallocations.as_view(), name='employeesallocations'),
+
+    path("leave_taken",Levetaken.as_view(), name="leave_taken"),
+
 ]

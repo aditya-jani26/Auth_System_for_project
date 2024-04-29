@@ -8,11 +8,7 @@ from .models import *
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.hashers import check_password
 from rest_framework.generics import ListAPIView
-# import django_filters.rest_framework
-# from rest_framework.exceptions import PermissionDenied
-# from rest_framework.permissions import IsAdminUser
-from django.core.mail import send_mail
-
+from datetime import datetime, timedelta
 # ===============================================-RegisterView-==========================================
 
 class RegisterView(APIView):
@@ -164,10 +160,9 @@ class projectCreateView(APIView):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-# ===-project-=========================================================-ProjectCRUDView-========================================-project-============
-    
+# ===-project-=========================================================-ProjectCRUDView-========================================-project-============   
 # this is use to do delte and update in any project here i have used 2 def function through which project can be deleted and updated
-
+    
 class ProjectCRUDView(APIView):
 
     def patch(self, request, id):
@@ -197,7 +192,7 @@ class ProjectCRUDView(APIView):
             except Project.DoesNotExist:
                 return Response({"error": "Project does not exists."},status=status.HTTP_404_NOT_FOUND)
 
-# =================================================================================================================
+# =============-allocations-==================================-allocations-==============================================-allocations-====================
 class Projectallocations(APIView):
 
     def post(self, request):
@@ -205,43 +200,68 @@ class Projectallocations(APIView):
         if not check:
             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
         else:
-            serializer = ProjectallocationSerializer(data=request.data)
+            serializer = ProjectAllocationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
         return Response({"Success": "Project allocation successful.", "allocation": serializer.data},
                         status=status.HTTP_201_CREATED)
-
-# =============================================================================================================================
-
-class EmployeeAllocationListView(APIView):
+    
+class employeesallocations(APIView):
 
     def get(self, request):
+    
+        check,obj = token_auth(request)
         if check:
-            check,obj = token_auth(request)
-            employees = CustomUser.objects.filter(userType="Employee")
+            employees = CustomUser.objects.filter(user_type='Employee')
             serializer = EmployeeListSerializer(employees, many=True)
             print(serializer.data)
             return Response(serializer.data)
         else:
             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
-    
 
-# add leave management system:
+# =============================================================================================================================
+class LeaveList(ListAPIView):
 
-# class LeaveList(ListAPIView):
-#     queryset = Leave.objects.all()
-#     serializer_class = LeaveListSerializer
+    queryset = Leave.objects.all()
+    serializer_class = LeavelListSerializer
 
-#     def get_queryset(self):
-#         check, obj = token_auth(self.request)
-#         print(obj)
-#         if not check:
-#             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
-#         elif check:
-#             user = self.request.user
-#             if user:
-#                 return Leave.objects.all()
-#         else:
-#             return Response({'msg': obj})
+    def get_queryset(self):
+        check, obj = token_auth(self.request)
 
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        elif check:
+            user = self.request.user
+            if user:
+                return Leave.objects.all()
+        else:
+            return Response({'msg': obj})
 
+class Levetaken(APIView):
+
+    def post(self, request):
+            start_date = request.data.get('leaveStartDate')
+            end_date = request.data.get('leaveEndDate')
+
+            # Convert string dates to datetime objects
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+            print("start_date", start_date)
+            print("end_date", end_date)
+
+            # Calculate total leave days
+            total_leave_days = (end_date - start_date).days + 1
+
+            print("total_leave_days", total_leave_days)
+
+            # Assign total_leave_days to request data
+            request.data['leave_days'] = total_leave_days
+            request.data['empName'] = request.user.id
+
+            # Serialize and save leave request
+            serializer = LeavetakenSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)

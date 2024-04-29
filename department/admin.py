@@ -9,3 +9,12 @@ admin.site.register(CustomUser, CustomUserAdmin)
 class CustomTokenAdmin(admin.ModelAdmin):
     list_display = ['key', 'user']
 admin.site.register(CustomToken, CustomTokenAdmin)
+
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ['projectCreator', 'assignToProject_Manager', 'project_id']
+admin.site.register(Project, ProjectAdmin)
+
+class LeaveProjectAdmin(admin.ModelAdmin):
+    list_display = ['approveLeave']
+
+admin.site.register(Leave, LeaveProjectAdmin)

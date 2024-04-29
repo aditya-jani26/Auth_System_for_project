@@ -1,6 +1,4 @@
-
 from rest_framework import serializers
-from rest_framework.fields import empty
 from .models import *
 from rest_framework import serializers
 from department.Utils import Utils
@@ -9,6 +7,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.hashers import make_password
+from django.db.models import Sum
 
 
 # working
@@ -96,65 +95,49 @@ class SendResetPasswordEmailSerializer(serializers.Serializer):
             print("email_data",email_data)
             Utils.send_email(email_data)
             return email_data
-        
+
         else:
             raise serializers.ValidationError({'INVALID_EMAIL': 'Email does not exist'})
-# not-working
+#working
 class ProjectListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = '__all__'
-# almost
+        fields = "__all__"
+#working
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = '__all__'
+        fields = "__all__"
         extra_kwargs = {
             'user': {'write_only': True}
         }
-# almost-working
+#working
 class ProjectCRUDSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = '__all__'
-class ProjectallocationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Project
-        fields = '__all__'
-    def validate(self, data):
-        email = data.get('email')
-        if CustomUser.objects.filter(email=email).exists():
-            user = CustomUser.objects.get(email=email)
-
-
-class EmployeeListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = '__all__'
-
+        fields = "__all__"
+#working
 class ProjectAllocationSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = allocation
-        fields = '__all__'
+        model = ProjectAllocation
+        fields = "__all__"
 
     def validate(self, data):
         emp_allocation = data.get('emp_allocation')
         project = data.get('project')
 
         # Check if the project is already assigned to the user
-        if allocation.objects.filter(emp_allocation=emp_allocation, project=project).exists():
+        if ProjectAllocation.objects.filter(emp_allocation=emp_allocation, project=project).exists():
             raise serializers.ValidationError("This project is already assigned to the user.")
         return data
-
     def create(self, validated_data):
         allocation_percentage = validated_data.get('allocation_percentage', None)
         emp_allocation = validated_data.get('emp_allocation')
         
-        total_allocation_percentage = allocation.objects.filter(emp_allocation=emp_allocation).aggregate(total_allocation=models.Sum('allocation_percentage'))['total_allocation'] or 0
+        total_allocation_percentage = ProjectAllocation.objects.filter(emp_allocation=emp_allocation).aggregate(total_allocation=models.Sum('allocation_percentage'))['total_allocation'] or 0
         remaining_percentage = 100 - total_allocation_percentage
         
         if allocation_percentage is not None and allocation_percentage > remaining_percentage:
@@ -164,18 +147,61 @@ class ProjectAllocationSerializer(serializers.ModelSerializer):
             emp_allocation.allocation_percentage = total_allocation_percentage + allocation_percentage
             emp_allocation.save()
         
-        return allocation.objects.create(**validated_data)
+        return ProjectAllocation.objects.create(**validated_data)
 
+#working
+class EmployeeListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = "__all__"
+class LeavelListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Leave
+        fields = "__all__"
 
+#working
+class ProjectAllocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectAllocation
+        fields = "__all__"
+
+    def validate(self, data):
+        emp_allocation = data.get('emp_allocation')
+        project = data.get('project')
+
+        # Check if the project is already assigned to the user
+        if ProjectAllocation.objects.filter(emp_allocation=emp_allocation, project=project).exists():
+            raise serializers.ValidationError("This project is already assigned to the user.")
+        return data
+
+    def create(self, validated_data):
+        allocation_percentage = validated_data.get('allocation_percentage', None)
+        emp_allocation = validated_data.get('emp_allocation')
+        
+        total_allocation_percentage = ProjectAllocation.objects.filter(emp_allocation=emp_allocation).aggregate(total_allocation=models.Sum('allocation_percentage'))['total_allocation'] or 0
+        remaining_percentage = 100 - total_allocation_percentage
+        
+        if allocation_percentage is not None and allocation_percentage > remaining_percentage:
+            raise serializers.ValidationError("The allocation percentage exceeds the remaining percentage.")
+
+        if allocation_percentage is not None:
+            emp_allocation.allocation_percentage = total_allocation_percentage + allocation_percentage
+            emp_allocation.save()
+        
+        return ProjectAllocation.objects.create(**validated_data)
+
+#working
 class ProjectInfoSerializer(serializers.ModelSerializer):
     project_name = serializers.SerializerMethodField()
     class Meta:
-        model = allocation
+        model = ProjectAllocation
         fields = ('project_name', 'allocation_percentage')
 
     def get_project_name(self, obj):
+
         return obj.Project.projectName
 
+#working
 class EmployeeAllocationListSerializer(serializers.ModelSerializer):
     projects = ProjectInfoSerializer(source='projectallocation_set', many=True, read_only=True)
     total_allocation_percentage = serializers.SerializerMethodField()
@@ -188,9 +214,13 @@ class EmployeeAllocationListSerializer(serializers.ModelSerializer):
         total_allocation = sum([allocation.allocation_percentage for allocation in obj.projectallocation_set.all()])
         return total_allocation
     
-
-class TaskStatusSerializer(serializers.ModelSerializer):
+class LeavetakenSerializer(serializers.ModelSerializer):
     class Meta:
-        model = allocation
+        model = Leave
         fields = '__all__'
-        
+
+class ApproveLeavetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Leave
+        fields = ('approveLeave',)
+
