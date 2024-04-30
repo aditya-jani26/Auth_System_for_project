@@ -10,7 +10,6 @@ from django.contrib.auth.hashers import check_password
 from rest_framework.generics import ListAPIView
 from datetime import datetime, timedelta
 # ===============================================-RegisterView-==========================================
-
 class RegisterView(APIView):
 
     parser_classes = [MultiPartParser, FormParser]
@@ -36,8 +35,8 @@ class RegisterView(APIView):
             if CustomUser.objects.filter(username=data.get('username')).exists():
                 errors['username'] = 'This username is already in use.'
             return errors
+
 # this is working and password stored in hash
-    
 # ==============================================-LoginView-====================================================
 # when the user is logged in Token should be creaded
     
@@ -143,10 +142,9 @@ class ProjectList(ListAPIView):
                 return Project.objects.all()
         else:
             return Response({'msg': obj})
-
+        
         #from this list Api the use can only be able to View list of projects
 # ===-project-===========================================================-projectCreateView-===============================-project-=========
-
 class projectCreateView(APIView):
 
     def post(self, request):
@@ -191,6 +189,25 @@ class ProjectCRUDView(APIView):
                 return Response({"success": "Project deleted successfully."},status=status.HTTP_204_NO_CONTENT)
             except Project.DoesNotExist:
                 return Response({"error": "Project does not exists."},status=status.HTTP_404_NOT_FOUND)
+            
+
+class TaskStatusView(APIView):
+
+
+    def patch(self, request, id):
+        project_allocaction = ProjectAllocation.objects.get(pk=id)
+        user_name = request.user.name
+        serializer = TaskStatusSerializer(project_allocaction, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        if project_allocaction.taskStatus == True:
+            response_data = {
+                "Success": f"Task has been completed successfully by {user_name}.",
+                "updated_data": serializer.data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            return Response({"Pending": "Task has not completed.", "updated_data":serializer.data}, status=status.HTTP_200_OK)
 
 # =============-allocations-==================================-allocations-==============================================-allocations-====================
 class Projectallocations(APIView):
@@ -204,8 +221,8 @@ class Projectallocations(APIView):
             serializer.is_valid(raise_exception=True)
             serializer.save()
         return Response({"Success": "Project allocation successful.", "allocation": serializer.data},
-                        status=status.HTTP_201_CREATED)
-    
+                    status=status.HTTP_201_CREATED)
+
 class employeesallocations(APIView):
 
     def get(self, request):
@@ -220,6 +237,66 @@ class employeesallocations(APIView):
             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
 
 # =============================================================================================================================
+
+class Levetaken(APIView):
+    def post(self, request):
+        check, obj = token_auth(self.request)
+
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        
+        else:
+            start_date_str = request.data.get('leaveStartDate')
+            end_date_str = request.data.get('leaveEndDate')
+
+            if start_date_str is None or end_date_str is None:
+                return Response({'error': 'Leave start date or end date is missing'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Convert string dates to datetime objects
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+            except ValueError:
+                return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Calculate total leave days
+        mutable_data = request.data.copy()
+        
+        # Calculate total leave days and add it to the request data
+        total_leave_days = (end_date - start_date).days + 1
+        mutable_data['leave_days'] = total_leave_days
+
+        # Add empName to the request data
+        mutable_data['empName'] = request.user.id
+
+        # Serialize and save leave request
+        serializer = LeavetakenSerializer(data=mutable_data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class leaveapproved(APIView):
+
+    def patch(self,request, id):
+        check, obj = token_auth(self.request)
+
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        
+        else:
+            leave = Leave.objects.get(pk=id)
+            serializer = ApproveLeavetSerializer(leave, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            if leave.approveLeave == True:
+                response_data = {
+                    "Success": "Leave has been granted...",
+                    "updated_data": serializer.data
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+            else:
+                return Response({"Success": "Leave has been rejected!!!", "updated_data":serializer.data}, status=status.HTTP_200_OK)
+
 class LeaveList(ListAPIView):
 
     queryset = Leave.objects.all()
@@ -236,32 +313,3 @@ class LeaveList(ListAPIView):
                 return Leave.objects.all()
         else:
             return Response({'msg': obj})
-
-class Levetaken(APIView):
-
-    def post(self, request):
-            start_date = request.data.get('leaveStartDate')
-            end_date = request.data.get('leaveEndDate')
-
-            # Convert string dates to datetime objects
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-
-            print("start_date", start_date)
-            print("end_date", end_date)
-
-            # Calculate total leave days
-            total_leave_days = (end_date - start_date).days + 1
-
-            print("total_leave_days", total_leave_days)
-
-            # Assign total_leave_days to request data
-            request.data['leave_days'] = total_leave_days
-            request.data['empName'] = request.user.id
-
-            # Serialize and save leave request
-            serializer = LeavetakenSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)

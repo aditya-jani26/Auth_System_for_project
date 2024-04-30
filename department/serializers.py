@@ -7,7 +7,6 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.hashers import make_password
-from django.db.models import Sum
 
 
 # working
@@ -200,7 +199,6 @@ class ProjectInfoSerializer(serializers.ModelSerializer):
     def get_project_name(self, obj):
 
         return obj.Project.projectName
-
 #working
 class EmployeeAllocationListSerializer(serializers.ModelSerializer):
     projects = ProjectInfoSerializer(source='projectallocation_set', many=True, read_only=True)
@@ -219,8 +217,13 @@ class LeavetakenSerializer(serializers.ModelSerializer):
         model = Leave
         fields = '__all__'
 
+class TaskStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = '__all__'
+        
 class ApproveLeavetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Leave
-        fields = ('approveLeave',)
+        fields = ('approveLeave')
 

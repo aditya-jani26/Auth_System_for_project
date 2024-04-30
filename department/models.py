@@ -42,13 +42,11 @@ class Project(models.Model):
     projectStatus = models.CharField(max_length=100,null = True, choices=todoChoices)
 
 class Leave(models.Model):
-    EmployeeName = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, related_name='leaves_requested')
+    EmployeeName = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False, related_name='leaves_requested')
     leaveStartDate = models.DateField(default=timezone.now)
     leaveEndDate = models.DateField(null = True)
-    typeOfLeave = [
-        ('full-day', 'full-day'),
-        ('half-day', 'half-day'),]
-    leaveType = models.CharField(max_length=100, choices=typeOfLeave ,default='full-day') 
+    typeOfLeave = [('full-day', 'full-day'),('half-day', 'half-day')]
+    leaveType = models.CharField(max_length=100, choices=typeOfLeave ,default='full-day')
     leaveReason = models.CharField(max_length=500)
     notifyTo = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='leaves_notified')
     approveLeave = models.BooleanField(default=False, null=True)
@@ -58,7 +56,7 @@ class CustomToken(models.Model):
     key = models.CharField(max_length=40)
     user = models.OneToOneField(CustomUser, related_name='custom_token', on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=datetime.now())
-    
+
     def generate_key(self):
         self.key = binascii.hexlify(os.urandom(20)).decode()
 

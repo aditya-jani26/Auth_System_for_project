@@ -12,7 +12,8 @@ urlpatterns = [
     path('projectCRUD/<int:id>',ProjectCRUDView.as_view(), name="ProjectCRUDView"),
     path('allocations',Projectallocations.as_view(),name='ProjectAllocationView'),
     path('employeesallocations',employeesallocations.as_view(), name='employeesallocations'),
-
+    path('Leave_list',LeaveList.as_view(), name='LeaveListView'),
+    path('leave_approved/<int:id>',leaveapproved.as_view(), name="leave_approved"),
     path("leave_taken",Levetaken.as_view(), name="leave_taken"),
 
 ]
