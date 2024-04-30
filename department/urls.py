@@ -15,5 +15,6 @@ urlpatterns = [
     path('Leave_list',LeaveList.as_view(), name='LeaveListView'),
     path('leave_approved/<int:id>',leaveapproved.as_view(), name="leave_approved"),
     path("leave_taken",Levetaken.as_view(), name="leave_taken"),
+    path("salary",salary.as_view(), name="salary"),
 
 ]

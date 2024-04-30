@@ -51,6 +51,20 @@ class Leave(models.Model):
     notifyTo = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='leaves_notified')
     approveLeave = models.BooleanField(default=False, null=True)
     leave_days = models.IntegerField(default=0)
+    percentage_of_salary = models.FloatField(default=1.0)
+    
+    def save(self, *args, **kwargs):
+        total_leave_days = (self.leave_end_date - self.leave_start_date).days + 1
+        if total_leave_days >= 21:
+            self.percentage_of_salary = 1.0  # 100% salary
+        elif total_leave_days == 20:
+            self.percentage_of_salary = 0.95  # 95% salary
+        elif total_leave_days == 19:
+            self.percentage_of_salary = 0.9  # 90% salary
+        elif total_leave_days == 18:
+            self.percentage_of_salary = 0.85  # 85% salary
+        # Add more conditions for other percentages
+        super().save(*args, **kwargs)
 
 class CustomToken(models.Model):
     key = models.CharField(max_length=40)

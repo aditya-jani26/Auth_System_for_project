@@ -313,3 +313,45 @@ class LeaveList(ListAPIView):
                 return Leave.objects.all()
         else:
             return Response({'msg': obj})
+class salary(APIView):
+    def post(self, request):
+        reg_errors = self.validate_registration(request.data)
+        
+        if reg_errors:
+            return Response({'msg': reg_errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = RegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                # Calculate percentage of salary
+                percentage_of_salary = self.calculate_percentage_of_salary(request.data)
+                # Save user with percentage_of_salary
+                serializer.save(percentage_of_salary=percentage_of_salary)
+                return Response({'msg': 'User has been registered Successfully'}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                reg_errors(f"Error occurred while saving user: {e}")
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def validate_registration(self, data):
+        errors = {}           
+        if CustomUser.objects.filter(username=data.get('username')).exists():
+            errors['username'] = 'This username is already in use.'
+        return errors
+
+    def calculate_percentage_of_salary(self, data):
+        # Calculate total leave days
+        leave_start_date = datetime.strptime(data['leave_start_date'], '%Y-%m-%d')
+        leave_end_date = datetime.strptime(data['leave_end_date'], '%Y-%m-%d')
+        total_leave_days = (leave_end_date - leave_start_date).days + 1
+        
+        # Define salary percentage based on leave days
+        if total_leave_days >= 21:
+            return 1.0  # 100% salary
+        elif total_leave_days == 20:
+            return 0.95  # 95% salary
+        elif total_leave_days == 19:
+            return 0.9  # 90% salary
+        elif total_leave_days == 18:
+            return 0.85  # 85% salary
+        # Add more conditions for other percentages
