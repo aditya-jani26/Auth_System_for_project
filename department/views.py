@@ -9,6 +9,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.hashers import check_password
 from rest_framework.generics import ListAPIView
 from datetime import datetime, timedelta
+from django.db.models import Sum
 # ===============================================-RegisterView-==========================================
 class RegisterView(APIView):
 
@@ -112,19 +113,7 @@ class SendResetPasswordEmaiView(APIView):
             serializer.is_valid(raise_exception=True)
         return Response({"Successful":"password reset link is sent..!"}, status=status.HTTP_200_OK)
 
-# =============-token_auth-=================-=-=-=-=-=-=-=-================================-token_auth-=========
-    
-def token_auth(request):
 
-    token = request.headers.get('token',None)
-
-    if token is None:
-        return False,"please provide a token"
-    try:
-        user = CustomToken.objects.get(key=token)
-        return True,user
-    except CustomToken.DoesNotExist:
-        return False,"token does not valid"
 
 #==================================================-ProjectList-====================================================
 class ProjectList(ListAPIView):
@@ -193,7 +182,6 @@ class ProjectCRUDView(APIView):
 
 class TaskStatusView(APIView):
 
-
     def patch(self, request, id):
         project_allocaction = ProjectAllocation.objects.get(pk=id)
         user_name = request.user.name
@@ -257,6 +245,7 @@ class Levetaken(APIView):
                 end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
             except ValueError:
                 return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
+        # i need to put error message for handling the exception if  exception in e  
 
             # Calculate total leave days
         mutable_data = request.data.copy()
@@ -289,7 +278,7 @@ class leaveapproved(APIView):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             if leave.approveLeave == True:
-                response_data = {
+                response_data = {   
                     "Success": "Leave has been granted...",
                     "updated_data": serializer.data
                 }
@@ -313,45 +302,130 @@ class LeaveList(ListAPIView):
                 return Leave.objects.all()
         else:
             return Response({'msg': obj})
+
+
+# class salary(APIView):
+
+#     def post(self, request):
+#         check, obj = token_auth(self.request)
+
+#         if not check:
+#             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        
+#         else:
+#             username = request.data.get('username')
+#             print("user",username)
+
+
+
+
+#             provided_salary_amount = float(request.data.get('amount'))
+#             # =============
+            
+#             emp = Leave.objects.filter(empName__id=username)
+
+
+#             # ....
+#             print("emp",emp)
+
+#             # Get the total approved leave days for the user
+#             # total_leave_days = user.leaves_requested.filter(approveLeave=True).aggregate(total_leave_days=models.Sum('leaveDays'))['total_leave_days'] or 0
+#             total_leave_days = Leave.objects.filter(empName=username, approveLeave=True).aggregate(total_leave_days=Sum('leave_days'))['total_leave_days']
+#             print("total_leave_days", total_leave_days)  
+#             # Calculate the remaining working days after deducting leave days
+#             remaining_working_days = 21 - total_leave_days
+
+#             # Calculate the total salary percentage based on remaining working days
+#             total_salary_percentage = (remaining_working_days / 21) * 100
+
+#             # Get the user's default salary percentage
+#             default_salary_percentage = 100
+
+#             # Determine the actual salary percentage to be used
+#             actual_salary_percentage = min(default_salary_percentage, total_salary_percentage)
+
+#             # Calculate the salary amount based on the actual salary percentage
+#             salary_amount = (actual_salary_percentage / 100) * provided_salary_amount
+#             print("salary_amount",salary_amount)
+#             amount = int(salary_amount)
+#             # Save the salary payment information
+#             serializer = SalaryPaymentSerializer(data={'user': username, 'amount': amount, 'payment_method': request.data.get('payment_method')})
+#             serializer.is_valid(raise_exception=True)
+#             serializer.save()
+
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#add permission class so that only admin can access this class (project list)
+    # admin can approve leave of pm and tl also admin can not take leave  
+        # admin can create project 
+        # only pm and tl can do CRUD operations 
+        # employees can take leave can send request to pl
+        # permissions class ==>  admin can list all projects
+                            # ==> admin and pl and tl can create  project 
+                                # ==> tl can assign project to pl 
+                                    #==> pl can assign the project to emp
+                                        # ==> here one emp can only work on new project if that emp is not associated to projects 100% of his time
+# permission class ==> 
+
 class salary(APIView):
     def post(self, request):
-        reg_errors = self.validate_registration(request.data)
+        check, obj = token_auth(self.request)
+
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
         
-        if reg_errors:
-            return Response({'msg': reg_errors}, status=status.HTTP_400_BAD_REQUEST)
-        
-        serializer = RegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                # Calculate percentage of salary
-                percentage_of_salary = self.calculate_percentage_of_salary(request.data)
-                # Save user with percentage_of_salary
-                serializer.save(percentage_of_salary=percentage_of_salary)
-                return Response({'msg': 'User has been registered Successfully'}, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                reg_errors(f"Error occurred while saving user: {e}")
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            username = request.data.get('username')
+            provided_salary_amount = request.data.get('amount')
+            if username and provided_salary_amount is True :
+            # Fetch employee leave data
+                emp = Leave.objects.filter(empName=username)
+                print("emp", emp)
 
-    def validate_registration(self, data):
-        errors = {}           
-        if CustomUser.objects.filter(username=data.get('username')).exists():
-            errors['username'] = 'This username is already in use.'
-        return errors
+                # Get the total approved leave days for the user
+                total_leave_days = Leave.objects.filter(empName=username, approveLeave=True).aggregate(total_leave_days=Sum('leave_days'))['total_leave_days']
+                print("total_leave_days", total_leave_days)
 
-    def calculate_percentage_of_salary(self, data):
-        # Calculate total leave days
-        leave_start_date = datetime.strptime(data['leave_start_date'], '%Y-%m-%d')
-        leave_end_date = datetime.strptime(data['leave_end_date'], '%Y-%m-%d')
-        total_leave_days = (leave_end_date - leave_start_date).days + 1
-        
-        # Define salary percentage based on leave days
-        if total_leave_days >= 21:
-            return 1.0  # 100% salary
-        elif total_leave_days == 20:
-            return 0.95  # 95% salary
-        elif total_leave_days == 19:
-            return 0.9  # 90% salary
-        elif total_leave_days == 18:
-            return 0.85  # 85% salary
-        # Add more conditions for other percentages
+                # If total_leave_days is None, set it to 0
+                total_leave_days = total_leave_days or 0
+
+                # Calculate the remaining working days after deducting leave days
+                remaining_working_days = 21 - total_leave_days
+
+                # Calculate the total salary percentage based on remaining working days
+                if total_leave_days == 0:
+                    total_salary_percentage = 100  # 100% salary if no leaves
+                else:
+                    total_salary_percentage = (remaining_working_days / 21) * 100
+
+                # Get the user's default salary percentage
+                default_salary_percentage = 100
+
+                # Determine the actual salary percentage to be used
+                actual_salary_percentage = min(default_salary_percentage, total_salary_percentage)
+
+                # Calculate the salary amount based on the actual salary percentage
+                salary_amount = (actual_salary_percentage / 100) * provided_salary_amount
+                print("salary_amount", salary_amount)
+                amount = int(salary_amount)
+
+                # Save the salary payment information
+                serializer = SalaryPaymentSerializer(data={'user': username, 'amount': amount})
+                print(serializer,'serializer')
+
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+# =============-token_auth-=================-=-=-=-=-=-=-=-================================-token_auth-=========
+    
+def token_auth(request):
+
+    token = request.headers.get('token',None)
+
+    if token is None:
+        return False,"please provide a token"
+    try:
+        user = CustomToken.objects.get(key=token)
+        return True,user
+    except CustomToken.DoesNotExist:
+        return False,"token does not valid"

@@ -18,3 +18,7 @@ class LeaveProjectAdmin(admin.ModelAdmin):
     list_display = ['approveLeave']
 
 admin.site.register(Leave, LeaveProjectAdmin)
+
+class SalaryAdmin(admin.ModelAdmin):
+    list_display = ['amount', 'transaction_id']
+admin.site.register(Salary, SalaryAdmin)

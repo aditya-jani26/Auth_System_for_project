@@ -2,9 +2,9 @@ from django.db import models
 from django.core.validators import EmailValidator,MinLengthValidator,MaxLengthValidator
 from .models import *
 import binascii
-from datetime import datetime
 from django.utils import timezone   
 import os
+from django.utils.timezone import now
 
 class CustomUser(models.Model):
     username = models.CharField(max_length=100)
@@ -42,34 +42,23 @@ class Project(models.Model):
     projectStatus = models.CharField(max_length=100,null = True, choices=todoChoices)
 
 class Leave(models.Model):
-    EmployeeName = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False, related_name='leaves_requested')
+    empName = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, related_name='leaves_requested')
     leaveStartDate = models.DateField(default=timezone.now)
-    leaveEndDate = models.DateField(null = True)
-    typeOfLeave = [('full-day', 'full-day'),('half-day', 'half-day')]
-    leaveType = models.CharField(max_length=100, choices=typeOfLeave ,default='full-day')
+    leaveEndDate = models.DateField(null=True)
+    typeOfLeave = [
+        ('half-day', 'half-day'),
+        ('full-day', 'full-day'),
+    ]
+    leaveType = models.CharField(max_length=100, choices=typeOfLeave ,default='full-day') 
     leaveReason = models.CharField(max_length=500)
     notifyTo = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='leaves_notified')
     approveLeave = models.BooleanField(default=False, null=True)
     leave_days = models.IntegerField(default=0)
-    percentage_of_salary = models.FloatField(default=1.0)
-    
-    def save(self, *args, **kwargs):
-        total_leave_days = (self.leave_end_date - self.leave_start_date).days + 1
-        if total_leave_days >= 21:
-            self.percentage_of_salary = 1.0  # 100% salary
-        elif total_leave_days == 20:
-            self.percentage_of_salary = 0.95  # 95% salary
-        elif total_leave_days == 19:
-            self.percentage_of_salary = 0.9  # 90% salary
-        elif total_leave_days == 18:
-            self.percentage_of_salary = 0.85  # 85% salary
-        # Add more conditions for other percentages
-        super().save(*args, **kwargs)
 
 class CustomToken(models.Model):
     key = models.CharField(max_length=40)
     user = models.OneToOneField(CustomUser, related_name='custom_token', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=datetime.now())
+    created_at = models.DateTimeField(default=timezone.now)
 
     def generate_key(self):
         self.key = binascii.hexlify(os.urandom(20)).decode()
@@ -90,4 +79,10 @@ class ProjectAllocation(models.Model):
     taskEndDate = models.DateField(null=True)
     taskStatus = models.BooleanField(default=False, null=True)
     # this will check if the emp is already on project, list total emp on a project , project & emp id 
+
+class Salary(models.Model):
+    transaction_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField(default=now)
     
