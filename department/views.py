@@ -1,4 +1,5 @@
 from warnings import filters
+from django import views
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -10,6 +11,8 @@ from django.contrib.auth.hashers import check_password
 from rest_framework.generics import ListAPIView
 from datetime import datetime, timedelta
 from django.db.models import Sum
+from django.conf import settings
+import stripe
 # ===============================================-RegisterView-==========================================
 class RegisterView(APIView):
 
@@ -69,7 +72,7 @@ class loginView(APIView):
 # Here the password will change on API level
         
 class ChangePasswords(APIView):
-
+# work on it---->
     def post(self, request):
         check, obj = token_auth(request)
         if not check:
@@ -90,7 +93,7 @@ class ChangePasswords(APIView):
 # here we reset the password will work on Email base 
         
 class ResetPassword(APIView):
-    
+# work on it---->>>>
     def post(self, request, format= None):
         check, obj = token_auth(request)
         if not check:
@@ -102,7 +105,7 @@ class ResetPassword(APIView):
                 return Response({'msg':'password Reset link send. Plase check your email inbox'},status= status.HTTP_200_OK)
 
 class SendResetPasswordEmaiView(APIView):
-
+# work on it--->
     def post(self, request):
         check, obj = token_auth(request)
         if not check:
@@ -117,6 +120,7 @@ class SendResetPasswordEmaiView(APIView):
 
 #==================================================-ProjectList-====================================================
 class ProjectList(ListAPIView):
+# worik on it--->
     queryset = Project.objects.all()
     serializer_class = ProjectListSerializer
 
@@ -135,7 +139,7 @@ class ProjectList(ListAPIView):
         #from this list Api the use can only be able to View list of projects
 # ===-project-===========================================================-projectCreateView-===============================-project-=========
 class projectCreateView(APIView):
-
+# work on it ---->
     def post(self, request):
         check, obj = token_auth(request)
 
@@ -151,7 +155,7 @@ class projectCreateView(APIView):
 # this is use to do delte and update in any project here i have used 2 def function through which project can be deleted and updated
     
 class ProjectCRUDView(APIView):
-
+# work on it---->>
     def patch(self, request, id):
         check, obj = token_auth(request)
 
@@ -181,7 +185,7 @@ class ProjectCRUDView(APIView):
             
 
 class TaskStatusView(APIView):
-
+# work on it--->>
     def patch(self, request, id):
         project_allocaction = ProjectAllocation.objects.get(pk=id)
         user_name = request.user.name
@@ -199,7 +203,7 @@ class TaskStatusView(APIView):
 
 # =============-allocations-==================================-allocations-==============================================-allocations-====================
 class Projectallocations(APIView):
-
+# work on it---> get
     def post(self, request):
         check,obj = token_auth(request)
         if not check:
@@ -212,7 +216,7 @@ class Projectallocations(APIView):
                     status=status.HTTP_201_CREATED)
 
 class employeesallocations(APIView):
-
+# work on it--->
     def get(self, request):
     
         check,obj = token_auth(request)
@@ -227,6 +231,7 @@ class employeesallocations(APIView):
 # =============================================================================================================================
 
 class Levetaken(APIView):
+# work on it--->    
     def post(self, request):
         check, obj = token_auth(self.request)
 
@@ -264,7 +269,25 @@ class Levetaken(APIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+class LeaveList(ListAPIView):
+
+    queryset = Leave.objects.all()
+    serializer_class = LeavelListSerializer
+
+    def get_queryset(self):
+        check, obj = token_auth(self.request)
+
+        if not check:
+            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
+        elif check:
+            user = self.request.user
+            if user:
+                return Leave.objects.all()
+        else:
+            return Response({'msg': obj})
+# =================================================================
 class leaveapproved(APIView):
+# work on it-->
 
     def patch(self,request, id):
         check, obj = token_auth(self.request)
@@ -285,87 +308,6 @@ class leaveapproved(APIView):
                 return Response(response_data, status=status.HTTP_200_OK)
             else:
                 return Response({"Success": "Leave has been rejected!!!", "updated_data":serializer.data}, status=status.HTTP_200_OK)
-
-class LeaveList(ListAPIView):
-
-    queryset = Leave.objects.all()
-    serializer_class = LeavelListSerializer
-
-    def get_queryset(self):
-        check, obj = token_auth(self.request)
-
-        if not check:
-            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
-        elif check:
-            user = self.request.user
-            if user:
-                return Leave.objects.all()
-        else:
-            return Response({'msg': obj})
-
-
-# class salary(APIView):
-
-#     def post(self, request):
-#         check, obj = token_auth(self.request)
-
-#         if not check:
-#             return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
-        
-#         else:
-#             username = request.data.get('username')
-#             print("user",username)
-
-
-
-
-#             provided_salary_amount = float(request.data.get('amount'))
-#             # =============
-            
-#             emp = Leave.objects.filter(empName__id=username)
-
-
-#             # ....
-#             print("emp",emp)
-
-#             # Get the total approved leave days for the user
-#             # total_leave_days = user.leaves_requested.filter(approveLeave=True).aggregate(total_leave_days=models.Sum('leaveDays'))['total_leave_days'] or 0
-#             total_leave_days = Leave.objects.filter(empName=username, approveLeave=True).aggregate(total_leave_days=Sum('leave_days'))['total_leave_days']
-#             print("total_leave_days", total_leave_days)  
-#             # Calculate the remaining working days after deducting leave days
-#             remaining_working_days = 21 - total_leave_days
-
-#             # Calculate the total salary percentage based on remaining working days
-#             total_salary_percentage = (remaining_working_days / 21) * 100
-
-#             # Get the user's default salary percentage
-#             default_salary_percentage = 100
-
-#             # Determine the actual salary percentage to be used
-#             actual_salary_percentage = min(default_salary_percentage, total_salary_percentage)
-
-#             # Calculate the salary amount based on the actual salary percentage
-#             salary_amount = (actual_salary_percentage / 100) * provided_salary_amount
-#             print("salary_amount",salary_amount)
-#             amount = int(salary_amount)
-#             # Save the salary payment information
-#             serializer = SalaryPaymentSerializer(data={'user': username, 'amount': amount, 'payment_method': request.data.get('payment_method')})
-#             serializer.is_valid(raise_exception=True)
-#             serializer.save()
-
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#add permission class so that only admin can access this class (project list)
-    # admin can approve leave of pm and tl also admin can not take leave  
-        # admin can create project 
-        # only pm and tl can do CRUD operations 
-        # employees can take leave can send request to pl
-        # permissions class ==>  admin can list all projects
-                            # ==> admin and pl and tl can create  project 
-                                # ==> tl can assign project to pl 
-                                    #==> pl can assign the project to emp
-                                        # ==> here one emp can only work on new project if that emp is not associated to projects 100% of his time
-# permission class ==> 
-
 class salary(APIView):
     def post(self, request):
         check, obj = token_auth(self.request)
@@ -418,6 +360,24 @@ class salary(APIView):
             print(serializer,'serializer')
 
 
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            try:
+                # Create a charge using Stripe API
+                charge = stripe.Charge.create(
+                    amount=amount * 100,  # amount in cents
+                    currency='usd',
+                    source=request.POST['stripeToken'],  # token obtained with Stripe.js
+                    description='Salary payment to {}'.format(username),
+                )
+            except stripe.error.CardError as e:
+                # Display error to user
+                return Response({'msg': e.error.message}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                # Handle other exceptions
+                return Response({'msg': 'An error occurred while processing the payment.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # If payment succeeds, save the salary payment information
+            serializer = SalaryPaymentSerializer(data={'user': username, 'amount': amount})
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
@@ -436,23 +396,20 @@ def token_auth(request):
         return True,user
     except CustomToken.DoesNotExist:
         return False,"token does not valid"
-    
-class ApproveLeaveView(APIView):
-
-    def patch(self,request, id):
-        check, obj = token_auth(self.request)
-        if not check:
-            return Response({'msg': obj}, status=status.HTTP_404_NOT_FOUND)
-        else:      
-            leave = Leave.objects.get(pk=id)
-            serializer = ApproveLeavetSerializer(leave, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            if leave.approveLeave == True:
-                response_data = {
-                    "Success": "Leave has been granted...",
-                    "updated_data": serializer.data
-                }
-                return Response(response_data, status=status.HTTP_200_OK)
-            else:
-                return Response({"Success": "Leave has been rejected!!!", "updated_data":serializer.data}, status=status.HTTP_200_OK)
+# ========-=-=-=-=-=-=-=-========================
+# class Createcheckoutsessionviews(views):
+#     def post(self, request):
+#         checkout_session = stripe.checkout.Session.create(
+#             payment_method_types=['card'],
+#             line_items=[
+#                     {
+#                             'price_data':{
+#                             'currency'=='usd',
+#                             'unit_amount'==2000,
+#                             'product_data'={
+#                                 'name':'stubborn Attachments',
+#                                 'images':['https://i.imgur.com/EHyR2nP.png'],
+#                                             },},'quantity':1,
+#                     },
+#                 ],
+#             ),

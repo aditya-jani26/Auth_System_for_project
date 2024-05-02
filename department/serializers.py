@@ -237,3 +237,5 @@ class SalaryPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Salary
         fields = ['user', 'amount']  # Include 'user' field in the serializer
+# =====>
+# how can i max use this serializer????????
