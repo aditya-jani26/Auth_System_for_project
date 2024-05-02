@@ -22,7 +22,7 @@ class CustomUser(models.Model):
 
     last_login = models.DateTimeField(blank=True, null=True)
     is_admin = models.BooleanField(default=False)
-
+    
     def get_email_field_name(self):
         return 'email'
 

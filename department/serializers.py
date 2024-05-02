@@ -233,14 +233,7 @@ class SalarySerializers(serializers.ModelSerializer):
         field = ('amount','transaction_id')
 
 class SalaryPaymentSerializer(serializers.ModelSerializer):
-    user = serializers.CharField()  # Assuming username is a CharField
 
     class Meta:
         model = Salary
         fields = ['user', 'amount']  # Include 'user' field in the serializer
-
-    def create(self, validated_data):
-        username = validated_data.pop('user')  # Get the username from validated data
-        user = CustomUser.objects.get(username=username)  # Assuming 'User' model is related
-        validated_data['user'] = user  # Assign the user object to 'user' field
-        return super().create(validated_data)
